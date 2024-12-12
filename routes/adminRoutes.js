@@ -1,8 +1,10 @@
 import express from "express"
-import { handleCreateNewSuperior } from "../controllers/adminController.js"
+import { handleAuthorizedLoginSystem, handleCreateNewSuperior, handleListingAdminSubAdmin } from "../controllers/adminController.js"
 
 const adminController = express.Router();
 
-requesterRouter.post("/new-rolecontroller", createNewrequest);
+adminController.post("/new-rolecontroller", handleCreateNewSuperior);
+adminController.get("/admin-users", handleListingAdminSubAdmin);
+adminController.post("/userlogin", handleAuthorizedLoginSystem);
 
 export default adminController
