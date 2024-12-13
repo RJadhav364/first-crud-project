@@ -48,7 +48,7 @@ const handleAuthorizedLoginSystem = async(req,res) => {
                 break;
             case findCredentialsDB != null:
                 const passwordResult = await compareHashPassword(credentialsGot.password , findCredentialsDB.password);
-                // console.log(passwordResult, "comparedpasswordResult");
+                console.log(passwordResult, "comparedpasswordResult");
                 if(passwordResult == true){
                     // const {password, ...restValues} = findCredentialsDB;
 
