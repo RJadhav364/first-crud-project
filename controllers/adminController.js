@@ -39,6 +39,7 @@ const handleListingAdminSubAdmin = async(req,res) => {
 const handleAuthorizedLoginSystem = async(req,res) => {
     try{
         const credentialsGot = req.body;
+        console.log("credentialsGot",req.body)
         const findCredentialsDB = await adminSModel.findOne({email: credentialsGot.email});
         console.log("findCredentialsDB",findCredentialsDB)
         switch(true){
@@ -49,8 +50,17 @@ const handleAuthorizedLoginSystem = async(req,res) => {
                 const passwordResult = await compareHashPassword(credentialsGot.password , findCredentialsDB.password);
                 // console.log(passwordResult, "comparedpasswordResult");
                 if(passwordResult == true){
-                    const {password, ...restValues} = findCredentialsDB;
-                    res.status(200).send({message: "User Logged In Successfully", data: restValues})
+                    // const {password, ...restValues} = findCredentialsDB;
+
+                    res.status(200).send({message: "User Logged In Successfully", data: {
+                        id: findCredentialsDB._id,
+                        email: findCredentialsDB.email,
+                        role: findCredentialsDB.role, // Assuming you store the user's role
+                        firstname: findCredentialsDB.firstname, // Custom field if needed
+                        hasAllRights: findCredentialsDB.hasAllRights, // Custom field if needed
+                        // storedUsername: findCredentialsDB.storedUsername, // Username
+                        __v: findCredentialsDB.__v
+                    }})
                 }
                 else{
                     res.status(200).send({message: "Password not matched"})
