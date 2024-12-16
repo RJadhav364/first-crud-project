@@ -73,4 +73,29 @@ const handleAuthorizedLoginSystem = async(req,res) => {
     }
 }
 
-export {handleCreateNewSuperior , handleListingAdminSubAdmin, handleAuthorizedLoginSystem}
+// handle admin and subadmin edit
+
+const handleAuthorizedEdit = async(req,res) => {
+    try{
+        const requestedObject = req.body;
+        // console.log(requestedObject)
+        const editedAuthorizeddata = await adminSModel.findOneAndUpdate({_id: req.params.id }, requestedObject);
+        // console.log(await adminSModel.findById({_id: req.params.id }))
+        res.status(200).send({message: "Data updated successfully" });
+    } catch(err){
+        res.status(400).send("Something went wrong");
+    }
+}
+
+// handle id wise admin and subadmin data
+const handleAuthorizedparticular = async(req,res) => {
+    try{
+        const adminId = req.params.id;
+        const fetchDataById = await adminSModel.findById({_id: adminId });
+        res.status(200).send({message:"data fetched" , data: fetchDataById});
+    } catch(err){
+        res.status(400).send("Something went wrong");
+    }
+}
+
+export {handleCreateNewSuperior , handleListingAdminSubAdmin, handleAuthorizedLoginSystem, handleAuthorizedEdit , handleAuthorizedparticular}

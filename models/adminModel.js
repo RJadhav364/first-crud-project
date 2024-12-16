@@ -23,6 +23,10 @@ const adminSchema = new Schema({
     password: {
         type: String,
         required: true
+    },
+    mnumber: {
+        type: String,
+        required: true
     }
 });
 

@@ -3,10 +3,6 @@ import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-    signUpUserid: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "signUpCollection",
-    },
     firstname: {
         type: String,
         required: true, 
@@ -20,19 +16,18 @@ const userSchema = new Schema({
         required: true,
         unique: true
     },
-    userType: {
+    role: {
         type: String,
         required: true
     },
-    status: {
+    password: {
         type: String,
         required: true
     },
-    // assign: {
-    //     type: String,
-    //     required: true,
-        
-    // },
+    number: {
+        type: String,
+        required: true
+    }
 });
 
 const userSModel = mongoose.model('userModule', userSchema);
