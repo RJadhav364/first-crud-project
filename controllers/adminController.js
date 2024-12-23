@@ -1,5 +1,6 @@
 import compareHashPassword from "../middleware/passwordCompare.js";
 import { convertPasswordToHash } from "../middleware/passwordHashing.js";
+import verifyJWTToken from "../middleware/verifyToken.js";
 import adminSModel from "../models/adminModel.js";
 
 
@@ -8,14 +9,14 @@ const handleCreateNewSuperior = async(req,res) => {
         const requestedValues = req.body;
         const {password, ...values} = requestedValues;
         // console.log("requestedValues",password);
-        console.log("requestedValues",values);
+        // console.log("requestedValues",values);
         const passwordConversion = await convertPasswordToHash(password);
         const mergeObject = {password: passwordConversion, ...values};
         // console.log("mergeObject",mergeObject);
         const newRegistration = await adminSModel.create(mergeObject)
         res.send({data: newRegistration})
     } catch(err){
-        console.log("err",err);
+        // console.log("err",err);
         res.send({data: err})
     }   
 }
@@ -24,11 +25,27 @@ const handleCreateNewSuperior = async(req,res) => {
 
 const handleListingAdminSubAdmin = async(req,res) => {
     try{
-        const allAuthorizedUsers = await adminSModel.find({});
-        // console.log(allAuthorizedUsers);
-        res.status(200).send({message: "Data Fetch successfully", data: allAuthorizedUsers})
+        const headersToken = req.headers['authorization']
+        // console.log(headersToken)
+        if(headersToken){
+            const token  = headersToken.split(" ")[1];
+            // console.log(token);
+            const tokenResult = await verifyJWTToken(token);
+            // console.log("tokenResult",tokenResult);
+            switch(true){
+                case tokenResult == false:
+                    const allAuthorizedUsers = await adminSModel.find({});
+                    res.status(200).send({message: "Data Fetch successfully", data: allAuthorizedUsers})
+                    break;
+                default:
+                    res.status(401).send({message: "Token has expired"});
+            }
+        } else{
+            res.status(498).send({message: "Token not found"})
+        }
     }
     catch(err){
+        // console.log(err)
         res.send({message: "Something went wrong"})
     }
 }
@@ -39,37 +56,45 @@ const handleListingAdminSubAdmin = async(req,res) => {
 const handleAuthorizedLoginSystem = async(req,res) => {
     try{
         const credentialsGot = req.body;
-        console.log("credentialsGot",req.body)
+        // console.log("credentialsGot",req.body)
         const findCredentialsDB = await adminSModel.findOne({email: credentialsGot.email});
-        console.log("findCredentialsDB",findCredentialsDB)
+        // console.log("findCredentialsDB",findCredentialsDB)
         switch(true){
             case findCredentialsDB == null:
                 res.status(404).send({message: "user not found"});
                 break;
             case findCredentialsDB != null:
                 const passwordResult = await compareHashPassword(credentialsGot.password , findCredentialsDB.password);
-                console.log(passwordResult, "comparedpasswordResult");
                 if(passwordResult == true){
+                    // console.log(passwordResult, "comparedpasswordResult");
                     // const {password, ...restValues} = findCredentialsDB;
-
+                    const payload = {
+                        id: findCredentialsDB._id,
+                        email: findCredentialsDB.email,
+                        role: findCredentialsDB.role,
+                        firstname: findCredentialsDB.firstname,
+                        hasAllRights: findCredentialsDB.hasAllRights,
+                        mnumber: findCredentialsDB.mnumber,
+                    };
+                    // console.log(payload, "payload");
                     res.status(200).send({message: "User Logged In Successfully", data: {
+                        token: await findCredentialsDB.generateToken(payload),
                         id: findCredentialsDB._id,
                         email: findCredentialsDB.email,
                         role: findCredentialsDB.role, // Assuming you store the user's role
                         firstname: findCredentialsDB.firstname, // Custom field if needed
                         hasAllRights: findCredentialsDB.hasAllRights, // Custom field if needed
-                        // storedUsername: findCredentialsDB.storedUsername, // Username
-                        __v: findCredentialsDB.__v
+                        mnumber: findCredentialsDB.mnumber, // Username
                     }})
                 }
                 else{
-                    res.status(200).send({message: "Password not matched"})
+                    res.status(401).send({message: "Unauthorized, Password not matched"})
                 }
                 break;
         }
     }
     catch(err){
-
+        console.log(err)
     }
 }
 

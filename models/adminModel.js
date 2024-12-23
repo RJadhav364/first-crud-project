@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import jwt from "jsonwebtoken"
 const Schema = mongoose.Schema;
 
 const adminSchema = new Schema({
@@ -32,6 +32,18 @@ const adminSchema = new Schema({
 
 adminSchema.path('hasAllRights')
     .default("No")
+
+    adminSchema.methods.generateToken = async function (payload){
+        try{
+            return jwt.sign(payload,
+                "j&/g@N&cj2vTIqQ!^9aV5HQ<R>a.9>,Xl2YQX!O}z&eofhc1TnyZmvXw9.PS0",{
+                    expiresIn: "1d",
+                }
+            )
+        } catch(err){
+            console.log(err)
+        }
+    }
 
 const adminSModel = mongoose.model('operationAdmin', adminSchema);
 
