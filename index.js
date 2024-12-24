@@ -3,6 +3,7 @@ import connectionMongoDB from "./connection.js";
 import { handleCreateNewSuperior, handleListingAdminSubAdmin } from "./controllers/adminController.js";
 import adminController from "./routes/adminRoutes.js";
 import cors from "cors"
+import userController from "./routes/userRoutes.js";
 const app = express();
 const PORT = 9000;
 connectionMongoDB();
@@ -16,6 +17,7 @@ var corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use("/admin", adminController)
+app.use("/role", userController)
 app.listen(PORT, () => {
     console.log(`app is running on PORT ${PORT}`);
 })

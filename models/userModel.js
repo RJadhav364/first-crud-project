@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import { jwtKey } from "../config/common";
+import { jwtKey } from "../config/common.js";
 
 const Schema = mongoose.Schema;
 
@@ -29,6 +29,10 @@ const userSchema = new Schema({
     number: {
         type: String,
         required: true
+    },
+    handledSubAdmin: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "operationAdmin",
     }
 });
 
