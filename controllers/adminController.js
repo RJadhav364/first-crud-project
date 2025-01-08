@@ -8,16 +8,42 @@ const handleCreateNewSuperior = async(req,res) => {
     try{
         const requestedValues = req.body;
         const {password, ...values} = requestedValues;
-        // console.log("requestedValues",password);
+        // console.log("requestedValues",req.body);
+        // console.log("authorization",req.headers['authorization']);
+        const headersToken = req.headers['authorization']
+        if(headersToken){
+            const token  = headersToken.split(" ")[1];
+            // console.log(token);
+            const tokenResult = await verifyJWTToken(token);
+            // console.log("tokenResult",tokenResult);
+            if(tokenResult.decode.role == "admin"){
+                // console.log("inside if");
+                const passwordConversion = await convertPasswordToHash(password);
+                const mergeObject = {password: passwordConversion, ...values};
+                // console.log("mergeObject",mergeObject);
+                const newRegistration = await adminSModel.create(mergeObject)
+                res.status(200).send({message: "New Authorized person created"})
+            } else{
+                res.status(403).send({message: "You do not have permission to perform this action"})
+            }
+        } else{
+            res.status(498).send({message: "Token not found"})
+        }
         // console.log("requestedValues",values);
-        const passwordConversion = await convertPasswordToHash(password);
-        const mergeObject = {password: passwordConversion, ...values};
-        // console.log("mergeObject",mergeObject);
-        const newRegistration = await adminSModel.create(mergeObject)
-        res.send({data: newRegistration})
     } catch(err){
-        // console.log("err",err);
-        res.send({data: err})
+        // console.log("err",err.errorResponse.errmsg);
+        // const errorLabels = err.errorResponse[Symbol('errorLabels')];
+        // console.log(errorLabels)
+        // console.log("err",err.errorResponse && err.errorResponse.keyPattern.email);
+        switch(true){
+            case err.errorResponse && err.errorResponse.keyPattern.email == 1:
+                // console.log("err",err.errorResponse.errmsg);
+                res.status(409).send({message: "Email ID already exist"})
+                break;
+            default:
+                res.send({message: "Something went wrong"})
+            
+        }
     }   
 }
 
@@ -25,6 +51,9 @@ const handleCreateNewSuperior = async(req,res) => {
 
 const handleListingAdminSubAdmin = async(req,res) => {
     try{
+        let page = Number(req.query.page) || 1;
+        let limit = 10;
+        let skip = (page - 1) * limit;
         const headersToken = req.headers['authorization']
         // console.log(headersToken)
         if(headersToken){
@@ -32,21 +61,29 @@ const handleListingAdminSubAdmin = async(req,res) => {
             // console.log(token);
             const tokenResult = await verifyJWTToken(token);
             // console.log("tokenResult",tokenResult);
-            switch(true){
-                case tokenResult == false:
-                    const allAuthorizedUsers = await adminSModel.find({});
-                    res.status(200).send({message: "Data Fetch successfully", data: allAuthorizedUsers})
-                    break;
-                default:
-                    res.status(401).send({message: "Token has expired"});
-            }
+            // switch(true){
+            //     case tokenResult.result == "false":
+                    const allAuthorizedUsers = await adminSModel.find({}).skip(skip).limit(limit);
+                    let allAuthorizedUsersCount = await adminSModel.countDocuments();
+                    let totaPages = Math.ceil(allAuthorizedUsersCount / limit)
+                    res.status(200).send({message: "Data Fetch successfully", data: allAuthorizedUsers,total_records: allAuthorizedUsersCount , total_page: totaPages , current_page:page})
+            //         break;
+            //     default:
+            //         res.status(401).send({message: "Token has expired"});
+            // }
         } else{
             res.status(498).send({message: "Token not found"})
         }
     }
     catch(err){
         // console.log(err)
-        res.send({message: "Something went wrong"})
+        switch(true){
+            case err.name == "TokenExpiredError":
+                res.status(401).send({message: "Token has expired"})
+                break;
+            default:
+                res.status(9999).send({message: "An unexpected error occurred. Please try again later."})
+        }
     }
 }
 
@@ -103,24 +140,86 @@ const handleAuthorizedLoginSystem = async(req,res) => {
 const handleAuthorizedEdit = async(req,res) => {
     try{
         const requestedObject = req.body;
+        const headersToken = req.headers['authorization']
         // console.log(requestedObject)
-        const editedAuthorizeddata = await adminSModel.findOneAndUpdate({_id: req.params.id }, requestedObject);
-        // console.log(await adminSModel.findById({_id: req.params.id }))
-        res.status(200).send({message: "Data updated successfully" });
+        
+        if(headersToken){
+            const token  = headersToken.split(" ")[1];
+            // console.log(token);
+            const tokenResult = await verifyJWTToken(token);
+            // console.log("tokenResult",tokenResult);
+            if(tokenResult.decode.role == "admin"){
+                // console.log("inside if");
+                const editedAuthorizeddata = await adminSModel.findOneAndUpdate({_id: req.params.id }, requestedObject);
+                // console.log(await adminSModel.findById({_id: req.params.id }))
+                res.status(200).send({message: "Data updated successfully" });
+            } else{
+                res.status(403).send({message: "You do not have permission to perform this action"})
+            }
+        } else{
+            res.status(498).send({message: "Token not found"})
+        }
     } catch(err){
-        res.status(400).send("Something went wrong");
+        switch(true){
+            case err.errorResponse && err.errorResponse.keyPattern.email == 1:
+                // console.log("err",err.errorResponse.errmsg);
+                res.status(409).send({message: "Email ID already exist"})
+                break;
+            default:
+                res.send({message: "Something went wrong"})
+            
+        }
     }
 }
 
 // handle id wise admin and subadmin data
 const handleAuthorizedparticular = async(req,res) => {
+    // console.log(req.params.id)
     try{
         const adminId = req.params.id;
         const fetchDataById = await adminSModel.findById({_id: adminId });
-        res.status(200).send({message:"data fetched" , data: fetchDataById});
+        console.log(fetchDataById)
+        const passObject = {
+            id: fetchDataById._id,
+            firstname: fetchDataById.firstname,
+            email: fetchDataById.email,
+            role: fetchDataById.role,
+            hasAllRights: fetchDataById.hasAllRights,
+            mnumber: fetchDataById.mnumber,
+        }
+        res.status(200).send({message:"data fetched" , data: passObject});
     } catch(err){
+        // console.log(err)
         res.status(400).send("Something went wrong");
     }
 }
 
-export {handleCreateNewSuperior , handleListingAdminSubAdmin, handleAuthorizedLoginSystem, handleAuthorizedEdit , handleAuthorizedparticular}
+// handle delete subadmin
+const handleDeleteSubadmin = async(req,res) => {
+    try{
+        const requestedObject = req.body;
+        const headersToken = req.headers['authorization']
+        // console.log(requestedObject)
+        
+        if(headersToken){
+            const token  = headersToken.split(" ")[1];
+            // console.log(token);
+            const tokenResult = await verifyJWTToken(token);
+            // console.log("tokenResult",tokenResult);
+            if(tokenResult.decode.role == "admin"){
+                // console.log("inside if");
+                const deleteAuthorizedId = await adminSModel.findOneAndDelete({_id: req.params.id });
+                // console.log(await adminSModel.findById({_id: req.params.id }))
+                res.status(200).send({message: "Data deleted successfully" });
+            } else{
+                res.status(403).send({message: "You do not have permission to perform this action"})
+            }
+        } else{
+            res.status(498).send({message: "Token not found"})
+        }
+    }catch(err){
+        console.log(err)
+    }
+}
+
+export {handleCreateNewSuperior , handleListingAdminSubAdmin, handleAuthorizedLoginSystem, handleAuthorizedEdit , handleAuthorizedparticular, handleDeleteSubadmin}

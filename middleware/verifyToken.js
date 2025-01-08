@@ -14,7 +14,7 @@ const verifyJWTToken = async(token) => {
     // const response = await result;
     // return response;
     const result = jwt.verify(token, jwtKey);
-    console.log(result)
+    // console.log(result)
     const response = {result: "false", decode: result}
     return response;
 }
