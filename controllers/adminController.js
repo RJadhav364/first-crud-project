@@ -51,19 +51,19 @@ const handleCreateNewSuperior = async(req,res) => {
 
 const handleListingAdminSubAdmin = async(req,res) => {
     try{
-        let page = Number(req.query.page) || 1;
+        let page = req.query.page == "no_pagination" ? "no_pagination" : Number(req.query.page) || 1;
         let limit = 10;
         let skip = (page - 1) * limit;
         const headersToken = req.headers['authorization']
         // console.log(headersToken)
         if(headersToken){
             const token  = headersToken.split(" ")[1];
-            // console.log(token);
+            // console.log("page",page);
             const tokenResult = await verifyJWTToken(token);
             // console.log("tokenResult",tokenResult);
             // switch(true){
             //     case tokenResult.result == "false":
-                    const allAuthorizedUsers = await adminSModel.find({}).skip(skip).limit(limit);
+                    const allAuthorizedUsers = page == "no_pagination" ? await adminSModel.find({}) : await adminSModel.find({}).skip(skip).limit(limit);
                     let allAuthorizedUsersCount = await adminSModel.countDocuments();
                     let totaPages = Math.ceil(allAuthorizedUsersCount / limit)
                     res.status(200).send({message: "Data Fetch successfully", data: allAuthorizedUsers,total_records: allAuthorizedUsersCount , total_page: totaPages , current_page:page})
@@ -178,7 +178,7 @@ const handleAuthorizedparticular = async(req,res) => {
     try{
         const adminId = req.params.id;
         const fetchDataById = await adminSModel.findById({_id: adminId });
-        console.log(fetchDataById)
+        // console.log(fetchDataById)
         const passObject = {
             id: fetchDataById._id,
             firstname: fetchDataById.firstname,
@@ -218,7 +218,13 @@ const handleDeleteSubadmin = async(req,res) => {
             res.status(498).send({message: "Token not found"})
         }
     }catch(err){
-        console.log(err)
+        switch(true){
+            case err.name == "TokenExpiredError":
+                res.status(401).send({message: "Token has expired"})
+                break;
+            default:
+                res.status(9999).send({message: "An unexpected error occurred. Please try again later."})
+        }
     }
 }
 
