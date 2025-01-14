@@ -4,29 +4,28 @@ import adminSModel from "../models/adminModel.js";
 import userSModel from "../models/userModel.js";
 
 const handleCreateNewUser = async(req,res) => {
+    const findCredentialsUserDB = await adminSModel.findOne({email: req.body.email});
     try{
-        const headersToken = req.headers['authorization']
-        if(headersToken){
-            const token  = headersToken.split(" ")[1];
-            // console.log(token);
-            const tokenResult = await verifyJWTToken(token);
-            // console.log("tokenResult",tokenResult);
-                // console.log("inside if");
-                const {password, ...values} = req.body;
-                const passwordConversion = await convertPasswordToHash(password);
-                const mergeObject = {password: passwordConversion, ...values};
-                // console.log("mergeObject",mergeObject);
-                const newRegistration = await userSModel.create(mergeObject)
-                res.status(200).send({message: "New user created"})
+        if(findCredentialsUserDB == null){
+            const headersToken = req.headers['authorization']
+            if(headersToken){
+                const token  = headersToken.split(" ")[1];
+                // console.log(token);
+                const tokenResult = await verifyJWTToken(token);
+                // console.log("tokenResult",tokenResult);
+                    // console.log("inside if");
+                    const {password, ...values} = req.body;
+                    const passwordConversion = await convertPasswordToHash(password);
+                    const mergeObject = {password: passwordConversion, ...values};
+                    // console.log("mergeObject",mergeObject);
+                    const newRegistration = await userSModel.create(mergeObject)
+                    res.status(200).send({message: "New user created"})
+            } else{
+                res.status(498).send({message: "Token not found"})
+            }
         } else{
-            res.status(498).send({message: "Token not found"})
+            res.status(400).send({message: "You are already an authorized person. You cannot create a user account."})
         }
-        console.log(req.body);
-        // const {password, ...values} = req.body;
-        // const passwordConversion = await convertPasswordToHash(password);
-        // const mergeObject = {password: passwordConversion, ...values};
-        // const newRegistration = await userSModel.create(mergeObject)
-        // res.status(200).send({message: "User Created Successfully"})
     }catch(err){
         console.log(err)
         switch(true){
@@ -48,36 +47,44 @@ const handleGetUsers = async(req,res) => {
             const token  = headersToken.split(" ")[1];
             // console.log(token);
             const tokenResult = await verifyJWTToken(token);
-            console.log(tokenResult.decode.role)
-            // switch(true){
-            //     case tokenResult.decode.role == "subadmin":
-            //         // console.log("subadmin found");
-
-            //         break;
-            //     default:
-                    switch(true){
-                        case tokenResult.result == "false":
-                            let passedData;
-                            let newRegistration = await userSModel.find({});
+            let newRegistration = await userSModel.find({});
                             // console.log(passedData)
-                            let adminModeldata = await adminSModel.find({});
-                            passedData = await newRegistration.map(({_id,firstname,lastname,email,role,number,handledSubAdmin}) => ({
-                                id: _id,
-                                firstname,
-                                lastname,
-                                email,
-                                role,
-                                number,
-                                handledSubAdmin,
-                                authorizedDetails: adminModeldata.find(value => value._id.equals(handledSubAdmin))
-                            }))
+            let adminModeldata = await adminSModel.find({});
+            let passedData;
+            switch(true){
+                case tokenResult.decode.role == "subadmin":
+                    // console.log("subadmin found",newRegistration);
+                    const subadminWiseData = await newRegistration.filter(({handledSubAdmin}) => handledSubAdmin == tokenResult.decode.id);
+                    passedData = await subadminWiseData.map(({_id,firstname,lastname,email,role,number,handledSubAdmin}) => ({
+                        id: _id,
+                        firstname,
+                        lastname,
+                        email,
+                        role,
+                        number,
+                        handledSubAdmin,
+                        authorizedDetails: tokenResult.decode
+                    }))
+                    res.status(200).send({message:"Data fetched successfully", data: passedData})
+                    break;
+                default:
+                    passedData = await newRegistration.map(({_id,firstname,lastname,email,role,number,handledSubAdmin}) => ({
+                        id: _id,
+                        firstname,
+                        lastname,
+                        email,
+                        role,
+                        number,
+                        handledSubAdmin,
+                        authorizedDetails: adminModeldata.find(value => value._id.equals(handledSubAdmin))
+                    }))
                             // console.log(passedData)
                             res.status(200).send({message:"Data fetched successfully", data: passedData})
-                            break;
-                        default:
-                            res.status(401).send({message: "Token has expired"});
-                    }
-            // }
+                    //         break;
+                    //     default:
+                    //         res.status(401).send({message: "Token has expired"});
+                    // }
+            }
         } else{
             res.status(498).send({message: "Token not found"})
         }
@@ -93,4 +100,25 @@ const handleGetUsers = async(req,res) => {
     }
 }
 
-export {handleCreateNewUser,handleGetUsers}
+const handleGetParticularUsers = async(req,res) => {
+    try{
+        const userId = req.params.id;
+        const fetchDataById = await userSModel.findById({_id: userId });
+        // console.log(fetchDataById)
+        const passObject = {
+            id: fetchDataById._id,
+            firstname: fetchDataById.firstname,
+            lastname: fetchDataById.lastname,
+            email: fetchDataById.email,
+            role: fetchDataById.role,
+            handledSubAdmin: fetchDataById.handledSubAdmin,
+            number: fetchDataById.number,
+        }
+        res.status(200).send({message:"data fetched" , data: passObject});
+    } catch(err){
+        // console.log(err)
+        res.status(400).send("Something went wrong");
+    }
+}
+
+export {handleCreateNewUser,handleGetUsers,handleGetParticularUsers}

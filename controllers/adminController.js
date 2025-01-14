@@ -2,6 +2,7 @@ import compareHashPassword from "../middleware/passwordCompare.js";
 import { convertPasswordToHash } from "../middleware/passwordHashing.js";
 import verifyJWTToken from "../middleware/verifyToken.js";
 import adminSModel from "../models/adminModel.js";
+import userSModel from "../models/userModel.js";
 
 
 const handleCreateNewSuperior = async(req,res) => {
@@ -82,7 +83,7 @@ const handleListingAdminSubAdmin = async(req,res) => {
                 res.status(401).send({message: "Token has expired"})
                 break;
             default:
-                res.status(9999).send({message: "An unexpected error occurred. Please try again later."})
+                res.status(400).send({message: "An unexpected error occurred. Please try again later."})
         }
     }
 }
@@ -95,10 +96,11 @@ const handleAuthorizedLoginSystem = async(req,res) => {
         const credentialsGot = req.body;
         // console.log("credentialsGot",req.body)
         const findCredentialsDB = await adminSModel.findOne({email: credentialsGot.email});
-        // console.log("findCredentialsDB",findCredentialsDB)
+        const findCredentialsUserDB = await userSModel.findOne({email: credentialsGot.email});
+        console.log("findCredentialsDB",findCredentialsUserDB)
         switch(true){
-            case findCredentialsDB == null:
-                res.status(404).send({message: "user not found"});
+            case findCredentialsDB == null && findCredentialsUserDB == null:
+                res.status(404).send({message: "User not found"});
                 break;
             case findCredentialsDB != null:
                 const passwordResult = await compareHashPassword(credentialsGot.password , findCredentialsDB.password);
@@ -122,6 +124,38 @@ const handleAuthorizedLoginSystem = async(req,res) => {
                         firstname: findCredentialsDB.firstname, // Custom field if needed
                         hasAllRights: findCredentialsDB.hasAllRights, // Custom field if needed
                         mnumber: findCredentialsDB.mnumber, // Username
+                    }})
+                }
+                else{
+                    res.status(401).send({message: "Unauthorized, Password not matched"})
+                }
+                break;
+            case findCredentialsUserDB != null:
+                const passwordResultUser = await compareHashPassword(credentialsGot.password , findCredentialsUserDB.password);
+                if(passwordResultUser == true){
+                    // console.log(passwordResult, "comparedpasswordResult");
+                    // const {password, ...restValues} = findCredentialsDB;
+                    const payload = {
+                        id: findCredentialsUserDB._id,
+                        email: findCredentialsUserDB.email,
+                        role: findCredentialsUserDB.role,
+                        firstname: findCredentialsUserDB.firstname,
+                        lastname: findCredentialsUserDB.lastname,
+                        hasAllRights: findCredentialsUserDB.hasAllRights,
+                        handledSubAdmin: findCredentialsUserDB.handledSubAdmin,
+                        mnumber: findCredentialsUserDB.number,
+                    };
+                    // console.log(payload, "payload");
+                    res.status(200).send({message: "User Logged In Successfully", data: {
+                        token: await findCredentialsUserDB.generateUserToken(payload),
+                        id: findCredentialsUserDB._id,
+                        email: findCredentialsUserDB.email,
+                        role: findCredentialsUserDB.role, // Assuming you store the user's role
+                        firstname: findCredentialsUserDB.firstname, // Custom field if needed
+                        lastname: findCredentialsUserDB.firstname, // Custom field if needed
+                        hasAllRights: findCredentialsUserDB.hasAllRights, // Custom field if needed
+                        handledSubAdmin: findCredentialsUserDB.handledSubAdmin, // Custom field if needed
+                        mnumber: findCredentialsUserDB.number, // Username
                     }})
                 }
                 else{
