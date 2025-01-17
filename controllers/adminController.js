@@ -175,7 +175,7 @@ const handleAuthorizedEdit = async(req,res) => {
     try{
         const requestedObject = req.body;
         const headersToken = req.headers['authorization']
-        // console.log(requestedObject)
+        console.log(requestedObject)
         
         if(headersToken){
             const token  = headersToken.split(" ")[1];
